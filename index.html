@@ -989,8 +989,12 @@
 
         const munis = getTienda().config.municipios_envio || {};
         const sel = document.getElementById("chk-municipio");
-        sel.innerHTML = `<option value="0">-- Recogida en tienda (Sin envío) --</option>` +
-            Object.entries(munis).map(([nombre, costo]) => `<option value="${costo}" data-nombre="${nombre}">${nombre} (+${formatearPrecio(costo)})</option>`).join("");
+        const entradas = Object.entries(munis);
+        if (entradas.length === 0) {
+            sel.innerHTML = `<option value="" data-nombre="">-- No hay zonas de envío configuradas --</option>`;
+        } else {
+            sel.innerHTML = entradas.map(([nombre, costo]) => `<option value="${costo}" data-nombre="${nombre}">${nombre} (+${formatearPrecio(costo)})</option>`).join("");
+        }
 
         actualizarTotalesCheckout();
         validarCheckout();
@@ -1007,7 +1011,7 @@
     function actualizarTotalesCheckout() {
         const subUsd = calcularTotalProductosUSD();
         const sel = document.getElementById("chk-municipio");
-        const envioUsd = parseFloat(sel.value) || 0;
+        const envioUsd = sel.value !== "" ? (parseFloat(sel.value) || 0) : 0;
         const totalUsd = subUsd + envioUsd;
 
         document.getElementById("chk-subtotal").textContent = `Subtotal productos: ${formatearPrecio(subUsd)}`;
@@ -1025,12 +1029,12 @@
         const reparto = document.getElementById("cli-reparto").value.trim();
         const nota = document.getElementById("cli-nota").value.trim();
         const cont = document.getElementById("contenedor-btn-wa");
+        const sel = document.getElementById("chk-municipio");
+        const muniNombre = sel.options[sel.selectedIndex]?.getAttribute("data-nombre") || "";
 
-        if (nombre.length >= 2 && tel.replace(/\D/g, '').length >= 6 && calle && entre && num) {
+        if (muniNombre && nombre.length >= 2 && tel.replace(/\D/g, '').length >= 6 && calle && entre && num) {
             const tienda = getTienda();
-            const sel = document.getElementById("chk-municipio");
             const envioUsd = parseFloat(sel.value) || 0;
-            const muniNombre = sel.options[sel.selectedIndex].getAttribute("data-nombre") || "Recogida en tienda";
             const totalUsd = calcularTotalProductosUSD() + envioUsd;
 
             let direccion = `${calle}, entre ${entre}, No. ${num}`;
@@ -1056,7 +1060,7 @@
             const url = `https://wa.me/${waNum}?text=${encodeURIComponent(msg.join("\n"))}`;
             cont.innerHTML = `<a href="${url}" target="_blank" class="btn-blue" style="width:100%;">📲 Enviar Pedido por WhatsApp (${formatearPrecio(totalUsd)})</a>`;
         } else {
-            cont.innerHTML = `<div class="neu-inset" style="text-align:center; padding:12px; color:var(--text-muted); font-weight:700;">🔒 Rellena nombre, teléfono y dirección para desbloquear WhatsApp</div>`;
+            cont.innerHTML = `<div class="neu-inset" style="text-align:center; padding:12px; color:var(--text-muted); font-weight:700;">🔒 Selecciona zona de entrega y rellena nombre, teléfono y dirección para desbloquear WhatsApp</div>`;
         }
     }
 
