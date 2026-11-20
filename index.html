@@ -125,6 +125,11 @@
             font-size: 0.85rem;
         }
 
+        .edit-box {
+            margin: 10px 0 14px 0;
+            padding: 16px;
+        }
+
         /* Cabecera de Tienda */
         .app-header {
             padding: 14px 20px;
@@ -612,7 +617,9 @@
     let categoriaActiva = null;
     let viendoResenas = false;
     let bloqueandoScrollAuto = false;
-    let tempImages = { logo: null, banner: null, producto: null };
+    let tempImages = { logo: null, banner: null, producto: null, editProducto: null };
+    let editandoProductoIdx = null;
+    let editandoMunicipioNombre = null;
 
     // Variables para acceso secreto (5 clics consecutivos en logo/título)
     let clicsSecretos = 0;
@@ -1102,6 +1109,9 @@
 
     function volverATienda() {
         viendoResenas = false;
+        editandoProductoIdx = null;
+        editandoMunicipioNombre = null;
+        tempImages.editProducto = null;
         document.getElementById("vista-admin").classList.add("hidden");
         if (window.location.search.includes("admin=true")) {
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -1191,6 +1201,9 @@
     }
 
     function cerrarSesionAdmin() {
+        editandoProductoIdx = null;
+        editandoMunicipioNombre = null;
+        tempImages.editProducto = null;
         document.getElementById("admin-dashboard").classList.add("hidden");
         document.getElementById("admin-auth").classList.remove("hidden");
         document.getElementById("login-pin").value = "";
@@ -1276,7 +1289,42 @@
         }
     }
 
+    function iniciarEditarMunicipio(nom) {
+        editandoMunicipioNombre = nom;
+        renderizarListasAdmin();
+    }
+
+    function cancelarEditarMunicipio() {
+        editandoMunicipioNombre = null;
+        renderizarListasAdmin();
+    }
+
+    async function guardarEditarMunicipio(antiguoNom) {
+        const nuevoNom = document.getElementById("edit-muni-nombre").value.trim();
+        const nuevoPrec = parseFloat(document.getElementById("edit-muni-precio").value);
+        if (!nuevoNom || isNaN(nuevoPrec) || nuevoPrec < 0) {
+            mostrarNotificacion("⚠️ Ingresa un nombre y costo de envío válido.");
+            return;
+        }
+        const munis = getTienda().config.municipios_envio || {};
+        const nuevoObj = {};
+        for (const [k, v] of Object.entries(munis)) {
+            if (k === antiguoNom) {
+                nuevoObj[nuevoNom] = nuevoPrec;
+            } else {
+                nuevoObj[k] = v;
+            }
+        }
+        getTienda().config.municipios_envio = nuevoObj;
+        if (await guardarTiendaEnSupabase(tiendaActualKey)) {
+            editandoMunicipioNombre = null;
+            mostrarNotificacion("✅ Municipio actualizado.");
+            renderizarListasAdmin();
+        }
+    }
+
     async function eliminarMunicipio(nom) {
+        if (editandoMunicipioNombre === nom) editandoMunicipioNombre = null;
         delete getTienda().config.municipios_envio[nom];
         if (await guardarTiendaEnSupabase(tiendaActualKey)) {
             renderizarListasAdmin();
@@ -1346,6 +1394,55 @@
         }
     }
 
+    function iniciarEditarProducto(idx) {
+        editandoProductoIdx = idx;
+        tempImages.editProducto = null;
+        renderizarListasAdmin();
+    }
+
+    function cancelarEditarProducto() {
+        editandoProductoIdx = null;
+        tempImages.editProducto = null;
+        renderizarListasAdmin();
+    }
+
+    async function guardarEditarProducto(idx) {
+        const prods = getTienda().productos || [];
+        const prod = prods[idx];
+        if (!prod) return;
+
+        const nom = document.getElementById("edit-prod-nombre").value.trim();
+        const desc = document.getElementById("edit-prod-desc").value.trim() || "Disponible";
+        const prec = parseFloat(document.getElementById("edit-prod-precio").value);
+        const cat = document.getElementById("edit-prod-cat").value;
+
+        if (!nom || isNaN(prec) || prec <= 0 || !cat) {
+            mostrarNotificacion("⚠️ Completa nombre, precio y categoría.");
+            return;
+        }
+
+        const nombreAnterior = prod.nombre;
+        prod.nombre = nom;
+        prod.desc = desc;
+        prod.precio_usd = prec;
+        prod.cat = cat;
+        if (tempImages.editProducto) {
+            prod.img = tempImages.editProducto;
+            tempImages.editProducto = null;
+        }
+
+        if (nombreAnterior !== nom && carrito[nombreAnterior]) {
+            carrito[nom] = (carrito[nom] || 0) + carrito[nombreAnterior];
+            delete carrito[nombreAnterior];
+        }
+
+        if (await guardarTiendaEnSupabase(tiendaActualKey)) {
+            editandoProductoIdx = null;
+            mostrarNotificacion("✅ ¡Producto actualizado!");
+            renderizarListasAdmin();
+        }
+    }
+
     async function moverProducto(idx, delta) {
         const prods = getTienda().productos || [];
         const nuevoIdx = idx + delta;
@@ -1353,12 +1450,15 @@
         const temp = prods[idx];
         prods[idx] = prods[nuevoIdx];
         prods[nuevoIdx] = temp;
+        if (editandoProductoIdx === idx) editandoProductoIdx = nuevoIdx;
+        else if (editandoProductoIdx === nuevoIdx) editandoProductoIdx = idx;
         if (await guardarTiendaEnSupabase(tiendaActualKey)) {
             renderizarListasAdmin();
         }
     }
 
     async function eliminarProducto(idx) {
+        if (editandoProductoIdx === idx) editandoProductoIdx = null;
         getTienda().productos.splice(idx, 1);
         if (await guardarTiendaEnSupabase(tiendaActualKey)) {
             renderizarListasAdmin();
@@ -1367,12 +1467,34 @@
 
     function renderizarListasAdmin() {
         const t = getTienda();
-        document.getElementById("lista-municipios").innerHTML = Object.entries(t.config.municipios_envio || {}).map(([m, p]) => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
-                <span>• <strong>${m}</strong> ($${p.toFixed(2)} USD)</span>
-                <button class="btn-danger" onclick="eliminarMunicipio('${m.replace(/'/g, "\\'")}')">🗑️</button>
-            </div>
-        `).join("");
+        const munis = Object.entries(t.config.municipios_envio || {});
+        document.getElementById("lista-municipios").innerHTML = munis.map(([m, p]) => {
+            const safeMJs = m.replace(/'/g, "\\'");
+            const safeMAttr = m.replace(/"/g, "&quot;");
+            if (editandoMunicipioNombre === m) {
+                return `
+                    <div class="neu-inset edit-box">
+                        <div class="grid-2 form-group">
+                            <input type="text" id="edit-muni-nombre" value="${safeMAttr}" placeholder="Nombre del Municipio">
+                            <input type="number" id="edit-muni-precio" step="0.5" value="${p}" placeholder="Costo Envío (USD)">
+                        </div>
+                        <div class="order-actions">
+                            <button class="btn-blue" onclick="guardarEditarMunicipio('${safeMJs}')">💾 Guardar</button>
+                            <button class="btn-neu" onclick="cancelarEditarMunicipio()">Cancelar</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--shadow-dark);">
+                    <span>• <strong>${m}</strong> ($${p.toFixed(2)} USD)</span>
+                    <div class="order-actions">
+                        <button class="btn-neu btn-order" onclick="iniciarEditarMunicipio('${safeMJs}')">✏️</button>
+                        <button class="btn-danger" onclick="eliminarMunicipio('${safeMJs}')">🗑️</button>
+                    </div>
+                </div>
+            `;
+        }).join("");
 
         const cats = t.config.categorias || [];
         document.getElementById("lista-categorias").innerHTML = cats.map((c, i) => `
@@ -1394,16 +1516,39 @@
         }
 
         const prods = t.productos || [];
-        document.getElementById("lista-productos-admin").innerHTML = prods.map((p, i) => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--shadow-dark);">
-                <span><strong>${p.nombre}</strong> - $${p.precio_usd.toFixed(2)} (${p.cat})</span>
-                <div class="order-actions">
-                    <button class="btn-neu btn-order" onclick="moverProducto(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-                    <button class="btn-neu btn-order" onclick="moverProducto(${i}, 1)" ${i === prods.length - 1 ? 'disabled' : ''}>↓</button>
-                    <button class="btn-danger" onclick="eliminarProducto(${i})">🗑️</button>
+        document.getElementById("lista-productos-admin").innerHTML = prods.map((p, i) => {
+            if (editandoProductoIdx === i) {
+                const opcionesCat = cats.length > 0
+                    ? cats.map(c => `<option value="${c.replace(/"/g, "&quot;")}" ${c === p.cat ? 'selected' : ''}>${c}</option>`).join("")
+                    : `<option value="${(p.cat || '').replace(/"/g, "&quot;")}">${p.cat || 'General'}</option>`;
+                return `
+                    <div class="neu-inset edit-box">
+                        <div class="form-group"><input type="text" id="edit-prod-nombre" value="${(p.nombre || '').replace(/"/g, "&quot;")}" placeholder="Nombre del producto *"></div>
+                        <div class="form-group"><input type="text" id="edit-prod-desc" value="${(p.desc || '').replace(/"/g, "&quot;")}" placeholder="Descripción corta"></div>
+                        <div class="grid-2 form-group">
+                            <input type="number" id="edit-prod-precio" step="0.5" value="${p.precio_usd}" placeholder="Precio USD *">
+                            <select id="edit-prod-cat">${opcionesCat}</select>
+                        </div>
+                        <div class="form-group"><label>Cambiar foto (opcional)</label><input type="file" id="edit-prod-foto" accept="image/*" onchange="procesarImagen(this, 'editProducto')"></div>
+                        <div class="order-actions">
+                            <button class="btn-blue" onclick="guardarEditarProducto(${i})">💾 Guardar Cambios</button>
+                            <button class="btn-neu" onclick="cancelarEditarProducto()">Cancelar</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--shadow-dark);">
+                    <span><strong>${p.nombre}</strong> - $${p.precio_usd.toFixed(2)} (${p.cat})</span>
+                    <div class="order-actions">
+                        <button class="btn-neu btn-order" onclick="iniciarEditarProducto(${i})">✏️</button>
+                        <button class="btn-neu btn-order" onclick="moverProducto(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+                        <button class="btn-neu btn-order" onclick="moverProducto(${i}, 1)" ${i === prods.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button class="btn-danger" onclick="eliminarProducto(${i})">🗑️</button>
+                    </div>
                 </div>
-            </div>
-        `).join("");
+            `;
+        }).join("");
     }
 
     function solicitarEliminacionTienda() {
