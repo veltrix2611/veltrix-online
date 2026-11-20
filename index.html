@@ -331,7 +331,7 @@
 <div class="container">
     <!-- ==================== ESTADO VACÍO (SIN TIENDA CONFIGURADA) ==================== -->
     <div id="vista-vacia" class="neu-box empty-state hidden">
-        <div id="empty-secret-trigger" onclick="registrarClicSecreto()" style="font-size: 3.2rem; margin-bottom: 14px; cursor: default;">🛍️</div>
+        <div style="font-size: 3.2rem; margin-bottom: 14px; cursor: default;">🛍️</div>
         <h2 style="font-weight: 800; margin-bottom: 8px;">Catálogo no disponible</h2>
         <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
             Esta tienda aún no ha sido configurada por su propietario. Vuelve más tarde para explorar nuestros productos.
@@ -340,9 +340,9 @@
 
     <!-- ==================== VISTA 1: TIENDA (SOLO CLIENTE) ==================== -->
     <div id="vista-tienda" class="hidden">
-        <!-- Cabecera (Sin botón visible de administración; 5 clics en el logo/título abren el acceso secreto) -->
+        <!-- Cabecera (Sin botón visible de administración; solo accesible mediante ?admin=true) -->
         <div class="neu-box app-header">
-            <div id="secret-header-trigger" onclick="registrarClicSecreto()" style="display: flex; align-items: center; gap: 14px; cursor: default;">
+            <div style="display: flex; align-items: center; gap: 14px; cursor: default;">
                 <img id="hdr-logo" src="" class="logo-ring" alt="Logo">
                 <div>
                     <div>
@@ -479,7 +479,7 @@
             <h2>⚙️ Panel de Administración</h2>
         </div>
 
-        <!-- Login / Registro de Tienda (Solo visible cuando se accede por ?admin=true o gesto secreto) -->
+        <!-- Login / Registro de Tienda (Solo visible con ?admin=true) -->
         <div id="admin-auth" class="neu-box admin-login-box">
             <div class="tabs-container" style="justify-content: center; position: static; box-shadow: none;">
                 <button class="tab-btn active" id="tab-btn-login" onclick="switchAuthTab('login')">🏪 Entrar</button>
@@ -634,26 +634,11 @@
     let editandoProductoIdx = null;
     let editandoMunicipioNombre = null;
 
-    // Variables para acceso secreto (5 clics consecutivos en logo/título)
-    let clicsSecretos = 0;
-    let timerClics = null;
-
     function mostrarNotificacion(texto) {
         const toast = document.getElementById("toast");
         toast.textContent = texto;
         toast.classList.add("show");
         setTimeout(() => toast.classList.remove("show"), 2600);
-    }
-
-    function registrarClicSecreto() {
-        clicsSecretos++;
-        clearTimeout(timerClics);
-        timerClics = setTimeout(() => { clicsSecretos = 0; }, 1800);
-
-        if (clicsSecretos >= 5) {
-            clicsSecretos = 0;
-            abrirAdmin();
-        }
     }
 
     async function cargarDBDesdeSupabase() {
@@ -1115,7 +1100,7 @@
         `).join("");
     }
 
-    // --- ADMINISTRACIÓN (ACCESO RESTRINGIDO) ---
+    // --- ADMINISTRACIÓN (SOLO ACCESIBLE MEDIANTE ?admin=true) ---
     function abrirAdmin() {
         document.getElementById("vista-tienda").classList.add("hidden");
         document.getElementById("vista-vacia").classList.add("hidden");
