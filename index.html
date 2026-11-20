@@ -113,6 +113,18 @@
             border-radius: 12px;
         }
 
+        .order-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-order {
+            padding: 8px 11px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+
         /* Cabecera de Tienda */
         .app-header {
             padding: 14px 20px;
@@ -153,13 +165,23 @@
         .img-banner { width: 100%; height: 220px; object-fit: cover; display: block; background: #dbe3ee; }
         .hero-info { padding: 20px 24px; }
 
-        /* Pestañas de Categorías */
+        /* Pestañas de Categorías pegajosas al hacer scroll */
         .tabs-container {
+            position: sticky;
+            top: 8px;
+            z-index: 50;
+            background: var(--bg-main);
+            border-radius: 20px;
             display: flex;
             gap: 10px;
             overflow-x: auto;
-            padding: 6px 4px 16px 4px;
-            margin-bottom: 10px;
+            scroll-behavior: smooth;
+            padding: 10px 8px;
+            margin-bottom: 16px;
+            box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+        }
+        .tabs-container::-webkit-scrollbar {
+            height: 4px;
         }
         .tab-btn {
             white-space: nowrap;
@@ -174,7 +196,18 @@
             box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
         }
 
-        /* Grid de Productos */
+        /* Secciones de Categoría y Grid de Productos */
+        .category-block {
+            margin-bottom: 26px;
+            scroll-margin-top: 76px;
+        }
+        .category-heading {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 14px;
+            padding-left: 4px;
+        }
         .products-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -376,11 +409,11 @@
                 </div>
             </div>
 
-            <!-- Pestañas (Todos, Categorías, Reseñas) -->
+            <!-- Pestañas (Categorías + Reseñas) -->
             <div class="tabs-container" id="tabs-categorias"></div>
 
-            <!-- Grid de Productos -->
-            <div id="grid-productos" class="products-grid"></div>
+            <!-- Contenedor de Categorías y Productos -->
+            <div id="grid-productos"></div>
 
             <!-- Sección de Reseñas -->
             <div id="seccion-resenas" class="hidden">
@@ -430,7 +463,7 @@
 
         <!-- Login / Registro de Tienda (Solo visible cuando se accede por ?admin=true o gesto secreto) -->
         <div id="admin-auth" class="neu-box admin-login-box">
-            <div class="tabs-container" style="justify-content: center;">
+            <div class="tabs-container" style="justify-content: center; position: static; box-shadow: none;">
                 <button class="tab-btn active" id="tab-btn-login" onclick="switchAuthTab('login')">🏪 Entrar</button>
                 <button class="tab-btn" id="tab-btn-register" onclick="switchAuthTab('register')">🚀 Crear Tienda</button>
             </div>
@@ -471,7 +504,7 @@
                 <button class="btn-danger" onclick="cerrarSesionAdmin()">Cerrar Sesión</button>
             </div>
 
-            <div class="tabs-container">
+            <div class="tabs-container" style="position: static; box-shadow: none;">
                 <button class="tab-btn active" onclick="switchAdminTab('config', this)">🏪 Configuración</button>
                 <button class="tab-btn" onclick="switchAdminTab('envios', this)">🛵 Envíos</button>
                 <button class="tab-btn" onclick="switchAdminTab('categorias', this)">📂 Categorías</button>
@@ -576,7 +609,9 @@
     let tiendaActualKey = null;
     let carrito = {};
     let monedaVista = "USD";
-    let categoriaActiva = "Todos";
+    let categoriaActiva = null;
+    let viendoResenas = false;
+    let bloqueandoScrollAuto = false;
     let tempImages = { logo: null, banner: null, producto: null };
 
     // Variables para acceso secreto (5 clics consecutivos en logo/título)
@@ -662,6 +697,30 @@
         return `${monto.toFixed(2)} ${monedaVista}`;
     }
 
+    function obtenerListaCategorias(tienda) {
+        const configuradas = Array.isArray(tienda.config?.categorias) ? [...tienda.config.categorias] : [];
+        const deProductos = (tienda.productos || []).map(p => p.cat).filter(Boolean);
+        deProductos.forEach(cat => {
+            if (!configuradas.includes(cat)) configuradas.push(cat);
+        });
+        return configuradas;
+    }
+
+    function actualizarPestanaActivaUI(nombreCat, centrarEnBarra = true) {
+        categoriaActiva = nombreCat;
+        const tabsDiv = document.getElementById("tabs-categorias");
+        const botones = tabsDiv.querySelectorAll(".tab-btn[data-cat]");
+
+        botones.forEach(btn => {
+            const match = !viendoResenas && btn.getAttribute("data-cat") === nombreCat;
+            btn.classList.toggle("active", match);
+            if (match && centrarEnBarra) {
+                const targetLeft = btn.offsetLeft - (tabsDiv.clientWidth / 2) + (btn.offsetWidth / 2);
+                tabsDiv.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+            }
+        });
+    }
+
     // --- RENDERIZADO VISTA CLIENTE ---
     function renderizarTienda() {
         const keys = Object.keys(db);
@@ -716,30 +775,55 @@
             monedaVista = "USD";
         }
 
-        // Pestañas
+        const categorias = obtenerListaCategorias(tienda);
+        if (categorias.length > 0 && !categoriaActiva) {
+            categoriaActiva = categorias[0];
+        }
+
+        // Pestañas (Categorías + Reseñas)
         const tabsDiv = document.getElementById("tabs-categorias");
-        const tabs = ["Todos", ...(cfg.categorias || []), `⭐ Reseñas (${(tienda.resenas || []).length})`];
-        tabsDiv.innerHTML = tabs.map(t => {
-            const isResena = t.startsWith("⭐ Reseñas");
-            const activeClass = (categoriaActiva === t || (isResena && categoriaActiva === "RESENAS")) ? "active" : "";
-            const target = isResena ? "RESENAS" : t;
-            return `<button class="tab-btn ${activeClass}" onclick="seleccionarCategoria('${target.replace(/'/g, "\\'")}')">${t}</button>`;
+        const catBtnsHtml = categorias.map(cat => {
+            const activeClass = (!viendoResenas && categoriaActiva === cat) ? "active" : "";
+            const safeCatAttr = cat.replace(/"/g, "&quot;");
+            const safeCatJs = cat.replace(/'/g, "\\'");
+            return `<button class="tab-btn ${activeClass}" data-cat="${safeCatAttr}" onclick="irACategoria('${safeCatJs}')">${cat}</button>`;
         }).join("");
 
-        renderizarProductos();
-        actualizarCarritoUI();
-    }
+        const resenaLabel = `⭐ Reseñas (${(tienda.resenas || []).length})`;
+        const resenaActiveClass = viendoResenas ? "active" : "";
+        tabsDiv.innerHTML = `${catBtnsHtml}<button class="tab-btn ${resenaActiveClass}" onclick="abrirSeccionResenas()">${resenaLabel}</button>`;
 
-    function seleccionarCategoria(cat) {
-        categoriaActiva = cat;
-        if (cat === "RESENAS") {
+        if (viendoResenas) {
             document.getElementById("grid-productos").classList.add("hidden");
             document.getElementById("seccion-resenas").classList.remove("hidden");
             renderizarResenas();
         } else {
             document.getElementById("grid-productos").classList.remove("hidden");
             document.getElementById("seccion-resenas").classList.add("hidden");
+            renderizarProductos();
         }
+
+        actualizarCarritoUI();
+    }
+
+    function irACategoria(cat) {
+        viendoResenas = false;
+        document.getElementById("grid-productos").classList.remove("hidden");
+        document.getElementById("seccion-resenas").classList.add("hidden");
+        actualizarPestanaActivaUI(cat, true);
+
+        const targetEl = document.querySelector(`.category-block[data-cat-section="${CSS.escape(cat)}"]`);
+        if (targetEl) {
+            bloqueandoScrollAuto = true;
+            const tabsHeight = document.getElementById("tabs-categorias").offsetHeight || 56;
+            const y = targetEl.getBoundingClientRect().top + window.scrollY - tabsHeight - 14;
+            window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+            setTimeout(() => { bloqueandoScrollAuto = false; }, 650);
+        }
+    }
+
+    function abrirSeccionResenas() {
+        viendoResenas = true;
         renderizarTienda();
     }
 
@@ -748,6 +832,34 @@
         renderizarProductos();
         actualizarCarritoUI();
         actualizarTotalesCheckout();
+    }
+
+    function renderizarTarjetaProducto(p) {
+        const cant = carrito[p.nombre] || 0;
+        const safeName = p.nombre.replace(/'/g, "\\'");
+        const btnHtml = cant === 0
+            ? `<button class="btn-neu" style="width:100%; color:var(--blue-primary);" onclick="modificarCarrito('${safeName}', 1)">🛍️ Agregar</button>`
+            : `<div class="qty-controls">
+                <button class="btn-neu" onclick="modificarCarrito('${safeName}', -1)">➖</button>
+                <div class="neu-inset qty-box">${cant}</div>
+                <button class="btn-neu" onclick="modificarCarrito('${safeName}', 1)">➕</button>
+               </div>`;
+
+        const imgSrc = p.img || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23dbe3ee' width='100' height='100'/><text x='50' y='56' font-size='30' text-anchor='middle'>📦</text></svg>";
+
+        return `
+            <div class="neu-box product-card">
+                <div>
+                    <img src="${imgSrc}" class="img-card" alt="${p.nombre}">
+                    <div class="prod-title">${p.nombre}</div>
+                    <div class="prod-desc">${p.desc}</div>
+                </div>
+                <div>
+                    <div class="prod-price">${formatearPrecio(p.precio_usd)}</div>
+                    ${btnHtml}
+                </div>
+            </div>
+        `;
     }
 
     function renderizarProductos() {
@@ -759,44 +871,70 @@
         const heroBanner = document.getElementById("hero-banner");
         if (heroBanner) heroBanner.style.display = "block";
 
-        let filtrados = [...(tienda.productos || [])];
-        if (categoriaActiva !== "Todos" && categoriaActiva !== "RESENAS") {
-            filtrados = filtrados.filter(p => p.cat === categoriaActiva);
-        }
-
-        if (filtrados.length === 0) {
-            grid.innerHTML = `<div class="neu-box" style="grid-column: 1/-1; text-align:center; padding: 32px; color:var(--text-muted); font-weight:600;">Aún no hay productos disponibles en esta sección.</div>`;
+        const productos = tienda.productos || [];
+        if (productos.length === 0) {
+            grid.innerHTML = `<div class="neu-box" style="text-align:center; padding: 32px; color:var(--text-muted); font-weight:600;">Aún no hay productos disponibles en esta tienda.</div>`;
             return;
         }
 
-        grid.innerHTML = filtrados.map(p => {
-            const cant = carrito[p.nombre] || 0;
-            const safeName = p.nombre.replace(/'/g, "\\'");
-            const btnHtml = cant === 0
-                ? `<button class="btn-neu" style="width:100%; color:var(--blue-primary);" onclick="modificarCarrito('${safeName}', 1)">🛍️ Agregar</button>`
-                : `<div class="qty-controls">
-                    <button class="btn-neu" onclick="modificarCarrito('${safeName}', -1)">➖</button>
-                    <div class="neu-inset qty-box">${cant}</div>
-                    <button class="btn-neu" onclick="modificarCarrito('${safeName}', 1)">➕</button>
-                   </div>`;
-
-            const imgSrc = p.img || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23dbe3ee' width='100' height='100'/><text x='50' y='56' font-size='30' text-anchor='middle'>📦</text></svg>";
-
+        const categorias = obtenerListaCategorias(tienda);
+        const bloques = categorias.map(cat => {
+            const items = productos.filter(p => p.cat === cat);
+            if (items.length === 0) return "";
+            const safeCatAttr = cat.replace(/"/g, "&quot;");
             return `
-                <div class="neu-box product-card">
-                    <div>
-                        <img src="${imgSrc}" class="img-card" alt="${p.nombre}">
-                        <div class="prod-title">${p.nombre}</div>
-                        <div class="prod-desc">${p.desc}</div>
+                <section class="category-block" data-cat-section="${safeCatAttr}">
+                    <h3 class="category-heading">${cat}</h3>
+                    <div class="products-grid">
+                        ${items.map(renderizarTarjetaProducto).join("")}
                     </div>
-                    <div>
-                        <div class="prod-price">${formatearPrecio(p.precio_usd)}</div>
-                        ${btnHtml}
-                    </div>
-                </div>
+                </section>
             `;
-        }).join("");
+        }).filter(Boolean);
+
+        // Productos sin categoría asignada o con categoría eliminada
+        const sinCat = productos.filter(p => !p.cat || !categorias.includes(p.cat));
+        if (sinCat.length > 0) {
+            bloques.push(`
+                <section class="category-block" data-cat-section="General">
+                    <h3 class="category-heading">General</h3>
+                    <div class="products-grid">
+                        ${sinCat.map(renderizarTarjetaProducto).join("")}
+                    </div>
+                </section>
+            `);
+        }
+
+        grid.innerHTML = bloques.join("");
+        sincronizarCategoriaConScroll();
     }
+
+    function sincronizarCategoriaConScroll() {
+        if (viendoResenas || bloqueandoScrollAuto) return;
+        const secciones = document.querySelectorAll(".category-block[data-cat-section]");
+        if (!secciones.length) return;
+
+        const tabsEl = document.getElementById("tabs-categorias");
+        const offsetUmbral = (tabsEl ? tabsEl.offsetHeight : 56) + 28;
+
+        let actual = secciones[0].getAttribute("data-cat-section");
+        for (const sec of secciones) {
+            const rect = sec.getBoundingClientRect();
+            if (rect.top <= offsetUmbral) {
+                actual = sec.getAttribute("data-cat-section");
+            } else {
+                break;
+            }
+        }
+
+        if (actual && actual !== categoriaActiva) {
+            actualizarPestanaActivaUI(actual, true);
+        }
+    }
+
+    window.addEventListener("scroll", () => {
+        sincronizarCategoriaConScroll();
+    }, { passive: true });
 
     // --- CARRITO Y CHECKOUT ---
     function modificarCarrito(nombre, delta) {
@@ -963,6 +1101,7 @@
     }
 
     function volverATienda() {
+        viendoResenas = false;
         document.getElementById("vista-admin").classList.add("hidden");
         if (window.location.search.includes("admin=true")) {
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -1044,6 +1183,7 @@
         }
 
         tiendaActualKey = key;
+        categoriaActiva = null;
         document.getElementById("admin-auth").classList.add("hidden");
         document.getElementById("admin-dashboard").classList.remove("hidden");
         mostrarNotificacion("✅ ¡Tienda creada en la nube!");
@@ -1156,6 +1296,18 @@
         }
     }
 
+    async function moverCategoria(idx, delta) {
+        const cats = getTienda().config.categorias || [];
+        const nuevoIdx = idx + delta;
+        if (nuevoIdx < 0 || nuevoIdx >= cats.length) return;
+        const temp = cats[idx];
+        cats[idx] = cats[nuevoIdx];
+        cats[nuevoIdx] = temp;
+        if (await guardarTiendaEnSupabase(tiendaActualKey)) {
+            renderizarListasAdmin();
+        }
+    }
+
     async function eliminarCategoria(nom) {
         const c = getTienda().config;
         c.categorias = c.categorias.filter(x => x !== nom);
@@ -1194,6 +1346,18 @@
         }
     }
 
+    async function moverProducto(idx, delta) {
+        const prods = getTienda().productos || [];
+        const nuevoIdx = idx + delta;
+        if (nuevoIdx < 0 || nuevoIdx >= prods.length) return;
+        const temp = prods[idx];
+        prods[idx] = prods[nuevoIdx];
+        prods[nuevoIdx] = temp;
+        if (await guardarTiendaEnSupabase(tiendaActualKey)) {
+            renderizarListasAdmin();
+        }
+    }
+
     async function eliminarProducto(idx) {
         getTienda().productos.splice(idx, 1);
         if (await guardarTiendaEnSupabase(tiendaActualKey)) {
@@ -1210,24 +1374,34 @@
             </div>
         `).join("");
 
-        document.getElementById("lista-categorias").innerHTML = (t.config.categorias || []).map(c => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+        const cats = t.config.categorias || [];
+        document.getElementById("lista-categorias").innerHTML = cats.map((c, i) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--shadow-dark);">
                 <span>• <strong>${c}</strong></span>
-                <button class="btn-danger" onclick="eliminarCategoria('${c.replace(/'/g, "\\'")}')">🗑️</button>
+                <div class="order-actions">
+                    <button class="btn-neu btn-order" onclick="moverCategoria(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="btn-neu btn-order" onclick="moverCategoria(${i}, 1)" ${i === cats.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button class="btn-danger" onclick="eliminarCategoria('${c.replace(/'/g, "\\'")}')">🗑️</button>
+                </div>
             </div>
         `).join("");
 
         const prodCatSel = document.getElementById("prod-cat");
-        if ((t.config.categorias || []).length === 0) {
+        if (cats.length === 0) {
             prodCatSel.innerHTML = `<option value="">-- Crea una categoría primero --</option>`;
         } else {
-            prodCatSel.innerHTML = t.config.categorias.map(c => `<option value="${c}">${c}</option>`).join("");
+            prodCatSel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join("");
         }
 
-        document.getElementById("lista-productos-admin").innerHTML = (t.productos || []).map((p, i) => `
+        const prods = t.productos || [];
+        document.getElementById("lista-productos-admin").innerHTML = prods.map((p, i) => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--shadow-dark);">
                 <span><strong>${p.nombre}</strong> - $${p.precio_usd.toFixed(2)} (${p.cat})</span>
-                <button class="btn-danger" onclick="eliminarProducto(${i})">🗑️</button>
+                <div class="order-actions">
+                    <button class="btn-neu btn-order" onclick="moverProducto(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="btn-neu btn-order" onclick="moverProducto(${i}, 1)" ${i === prods.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button class="btn-danger" onclick="eliminarProducto(${i})">🗑️</button>
+                </div>
             </div>
         `).join("");
     }
@@ -1247,6 +1421,7 @@
         if (await eliminarTiendaDeSupabase(keyABorrar)) {
             delete db[keyABorrar];
             tiendaActualKey = Object.keys(db)[0] || null;
+            categoriaActiva = null;
             cerrarSesionAdmin();
             volverATienda();
             mostrarNotificacion("🗑️ Tienda eliminada de la nube.");
