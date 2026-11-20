@@ -130,6 +130,15 @@
             padding: 16px;
         }
 
+        .delivery-notice {
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            font-size: 0.86rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-align: center;
+        }
+
         /* Cabecera de Tienda */
         .app-header {
             padding: 14px 20px;
@@ -397,6 +406,10 @@
             <div class="form-group">
                 <label>Nota adicional (opcional)</label>
                 <input type="text" id="cli-nota" placeholder="Instrucciones extra..." oninput="validarCheckout()">
+            </div>
+
+            <div class="neu-inset delivery-notice">
+                Tiempo estimado de entrega: entre 12 y 24 horas en tu domicilio. Recibes el pedido y luego Pagas.
             </div>
 
             <div id="contenedor-btn-wa"></div>
