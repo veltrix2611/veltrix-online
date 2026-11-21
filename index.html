@@ -106,6 +106,12 @@
             box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light), 0 4px 15px rgba(0, 102, 255, 0.4);
         }
 
+        .btn-cta-hero {
+            margin-top: 14px;
+            padding: 11px 22px;
+            font-size: 0.92rem;
+        }
+
         .btn-danger {
             background: rgba(239, 68, 68, 0.15);
             color: #dc2626;
@@ -306,34 +312,47 @@
             z-index: 999;
         }
 
-        /* Pie de página: Métodos de Pago y Legal */
+        /* Pie de página: Métodos de Pago, Contacto, Redes y Legal */
         .store-footer {
             margin-top: 32px;
             padding: 24px 20px;
         }
+        .footer-top-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+        }
+        .footer-col-left {
+            flex: 1 1 280px;
+        }
+        .footer-col-right {
+            flex: 1 1 300px;
+        }
         .footer-title {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             font-weight: 700;
             color: var(--text-dark);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         .payment-badges {
             display: flex;
             flex-wrap: wrap;
-            gap: 14px;
+            gap: 12px;
             align-items: center;
         }
         .pay-badge {
-            height: 44px;
-            min-width: 96px;
-            padding: 0 16px;
+            height: 42px;
+            min-width: 92px;
+            padding: 0 14px;
             border-radius: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
+            gap: 6px;
             font-weight: 800;
-            font-size: 0.98rem;
+            font-size: 0.94rem;
             box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
             border: 1px solid rgba(255, 255, 255, 0.7);
             user-select: none;
@@ -351,6 +370,43 @@
         .pay-cash {
             background: #00d64f;
             color: #ffffff;
+        }
+        .contact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.86rem;
+            color: var(--text-dark);
+            margin-bottom: 14px;
+        }
+        .contact-item a {
+            color: var(--blue-primary);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .social-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .social-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-main);
+            color: var(--text-dark);
+            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 0.9rem;
+        }
+        .social-btn:active {
+            box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
         }
         .footer-divider {
             border: 0;
@@ -520,6 +576,7 @@
                     <div id="hero-nombre" style="font-size: 1.4rem; font-weight: 800;"></div>
                     <div id="hero-desc" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 8px;"></div>
                     <div id="hero-ubicacion" style="font-size: 0.86rem; color: var(--text-muted); margin-top: 6px;"></div>
+                    <button type="button" class="btn-blue btn-cta-hero" onclick="irAProductos()">🛒 Compra en línea</button>
                 </div>
             </div>
 
@@ -555,18 +612,35 @@
             </div>
         </div>
 
-        <!-- Pie de página: Métodos de Pago e Información Legal -->
+        <!-- Pie de página: Métodos de Pago, Contacto, Redes e Información Legal -->
         <footer class="neu-box store-footer">
-            <div class="footer-title">Métodos de pago</div>
-            <div class="payment-badges">
-                <div class="pay-badge pay-zelle" title="Zelle">
-                    <span style="font-size:1.15rem;">Ƶ</span> Zelle
+            <div class="footer-top-row">
+                <div class="footer-col-left">
+                    <div class="footer-title">Métodos de pago</div>
+                    <div class="payment-badges">
+                        <div class="pay-badge pay-zelle" title="Zelle">
+                            <span style="font-size:1.1rem;">Ƶ</span> Zelle
+                        </div>
+                        <div class="pay-badge pay-bizum" title="Bizum">
+                            <span style="font-size:1rem;">⇄</span> bizum
+                        </div>
+                        <div class="pay-badge pay-cash" title="Cash / Efectivo">
+                            <span style="font-size:1.1rem;">$</span> Cash
+                        </div>
+                    </div>
                 </div>
-                <div class="pay-badge pay-bizum" title="Bizum">
-                    <span style="font-size:1.05rem;">⇄</span> bizum
-                </div>
-                <div class="pay-badge pay-cash" title="Cash / Efectivo">
-                    <span style="font-size:1.15rem;">$</span> Cash
+
+                <div class="footer-col-right">
+                    <div class="footer-title">Contacto y redes sociales</div>
+                    <div class="contact-list">
+                        <div class="contact-item">✉️ Correo: <a href="mailto:veltrix2611@gmail.com">veltrix2611@gmail.com</a></div>
+                        <div class="contact-item">📞 Número: <a href="tel:+5358616194">+53 58616194</a></div>
+                    </div>
+                    <div class="social-row">
+                        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="social-btn" title="Facebook" aria-label="Facebook">f</a>
+                        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="social-btn" title="Instagram" aria-label="Instagram">◎</a>
+                        <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" class="social-btn" title="TikTok" aria-label="TikTok">♪</a>
+                    </div>
                 </div>
             </div>
 
@@ -940,6 +1014,22 @@
         }
 
         actualizarCarritoUI();
+    }
+
+    function irAProductos() {
+        const tienda = getTienda();
+        const categorias = tienda ? obtenerListaCategorias(tienda) : [];
+        const primeraCat = categorias[0] || categoriaActiva;
+        if (primeraCat) {
+            irACategoria(primeraCat);
+            return;
+        }
+        const gridEl = document.getElementById("grid-productos");
+        if (gridEl) {
+            const tabsHeight = document.getElementById("tabs-categorias").offsetHeight || 56;
+            const y = gridEl.getBoundingClientRect().top + window.scrollY - tabsHeight - 14;
+            window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        }
     }
 
     function irACategoria(cat) {
