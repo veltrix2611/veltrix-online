@@ -232,6 +232,36 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
+        }
+        .product-card.is-agotado .img-card {
+            filter: grayscale(65%);
+            opacity: 0.72;
+        }
+        .badge-agotado {
+            position: absolute;
+            top: 22px;
+            right: 22px;
+            background: #dc2626;
+            color: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 5px 11px;
+            border-radius: 99px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 3px 8px rgba(220, 38, 38, 0.35);
+            z-index: 2;
+        }
+        .btn-agotado-disabled {
+            width: 100%;
+            text-align: center;
+            padding: 9px 0;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #dc2626;
+            background: rgba(239, 68, 68, 0.12);
+            cursor: not-allowed;
         }
         .img-card {
             width: 100%;
@@ -941,20 +971,29 @@
     }
 
     function renderizarTarjetaProducto(p) {
-        const cant = carrito[p.nombre] || 0;
+        const agotado = !!p.agotado;
+        const cant = agotado ? 0 : (carrito[p.nombre] || 0);
         const safeName = p.nombre.replace(/'/g, "\\'");
-        const btnHtml = cant === 0
-            ? `<button class="btn-neu" style="width:100%; color:var(--blue-primary);" onclick="modificarCarrito('${safeName}', 1)">🛍️ Agregar</button>`
-            : `<div class="qty-controls">
+
+        let btnHtml = "";
+        if (agotado) {
+            btnHtml = `<div class="btn-agotado-disabled">🚫 Agotado</div>`;
+        } else if (cant === 0) {
+            btnHtml = `<button class="btn-neu" style="width:100%; color:var(--blue-primary);" onclick="modificarCarrito('${safeName}', 1)">🛍️ Agregar</button>`;
+        } else {
+            btnHtml = `<div class="qty-controls">
                 <button class="btn-neu" onclick="modificarCarrito('${safeName}', -1)">➖</button>
                 <div class="neu-inset qty-box">${cant}</div>
                 <button class="btn-neu" onclick="modificarCarrito('${safeName}', 1)">➕</button>
                </div>`;
+        }
 
+        const badgeAgotadoHtml = agotado ? `<span class="badge-agotado">AGOTADO</span>` : "";
         const imgSrc = p.img || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23dbe3ee' width='100' height='100'/><text x='50' y='56' font-size='30' text-anchor='middle'>📦</text></svg>";
 
         return `
-            <div class="neu-box product-card">
+            <div class="neu-box product-card ${agotado ? 'is-agotado' : ''}">
+                ${badgeAgotadoHtml}
                 <div>
                     <img src="${imgSrc}" class="img-card" alt="${p.nombre}">
                     <div class="prod-title">${p.nombre}</div>
@@ -1044,6 +1083,10 @@
 
     // --- CARRITO Y CHECKOUT ---
     function modificarCarrito(nombre, delta) {
+        const tienda = getTienda();
+        const prod = tienda ? (tienda.productos || []).find(item => item.nombre === nombre) : null;
+        if (prod && prod.agotado && delta > 0) return;
+
         carrito[nombre] = (carrito[nombre] || 0) + delta;
         if (carrito[nombre] <= 0) delete carrito[nombre];
         renderizarProductos();
@@ -1062,7 +1105,7 @@
         let total = 0;
         for (const [nombre, cant] of Object.entries(carrito)) {
             const p = tienda.productos.find(item => item.nombre === nombre);
-            if (p) total += p.precio_usd * cant;
+            if (p && !p.agotado) total += p.precio_usd * cant;
         }
         return total;
     }
@@ -1482,6 +1525,7 @@
             desc: desc,
             precio_usd: prec,
             cat: cat,
+            agotado: false,
             img: tempImages.producto || ""
         });
         tempImages.producto = null;
@@ -1517,6 +1561,7 @@
         const desc = document.getElementById("edit-prod-desc").value.trim() || "Disponible";
         const prec = parseFloat(document.getElementById("edit-prod-precio").value);
         const cat = document.getElementById("edit-prod-cat").value;
+        const estadoStock = document.getElementById("edit-prod-agotado").value;
 
         if (!nom || isNaN(prec) || prec <= 0 || !cat) {
             mostrarNotificacion("⚠️ Completa nombre, precio y categoría.");
@@ -1528,12 +1573,16 @@
         prod.desc = desc;
         prod.precio_usd = prec;
         prod.cat = cat;
+        prod.agotado = estadoStock === "agotado";
         if (tempImages.editProducto) {
             prod.img = tempImages.editProducto;
             tempImages.editProducto = null;
         }
 
-        if (nombreAnterior !== nom && carrito[nombreAnterior]) {
+        if (prod.agotado) {
+            delete carrito[nombreAnterior];
+            delete carrito[nom];
+        } else if (nombreAnterior !== nom && carrito[nombreAnterior]) {
             carrito[nom] = (carrito[nom] || 0) + carrito[nombreAnterior];
             delete carrito[nombreAnterior];
         }
@@ -1631,6 +1680,13 @@
                             <input type="number" id="edit-prod-precio" step="0.5" value="${p.precio_usd}" placeholder="Precio USD *">
                             <select id="edit-prod-cat">${opcionesCat}</select>
                         </div>
+                        <div class="form-group">
+                            <label>Disponibilidad en tienda</label>
+                            <select id="edit-prod-agotado">
+                                <option value="disponible" ${!p.agotado ? 'selected' : ''}>✅ Disponible</option>
+                                <option value="agotado" ${p.agotado ? 'selected' : ''}>🚫 Agotado</option>
+                            </select>
+                        </div>
                         <div class="form-group"><label>Cambiar foto (opcional)</label><input type="file" id="edit-prod-foto" accept="image/*" onchange="procesarImagen(this, 'editProducto')"></div>
                         <div class="order-actions">
                             <button class="btn-blue" onclick="guardarEditarProducto(${i})">💾 Guardar Cambios</button>
@@ -1639,9 +1695,10 @@
                     </div>
                 `;
             }
+            const etiquetaAgotado = p.agotado ? ` <span style="color:#dc2626; font-weight:800; font-size:0.78rem;">(AGOTADO)</span>` : "";
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--shadow-dark);">
-                    <span><strong>${p.nombre}</strong> - $${p.precio_usd.toFixed(2)} (${p.cat})</span>
+                    <span><strong>${p.nombre}</strong> - $${p.precio_usd.toFixed(2)} (${p.cat})${etiquetaAgotado}</span>
                     <div class="order-actions">
                         <button class="btn-neu btn-order" onclick="iniciarEditarProducto(${i})">✏️</button>
                         <button class="btn-neu btn-order" onclick="moverProducto(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
