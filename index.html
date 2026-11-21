@@ -276,6 +276,72 @@
             z-index: 999;
         }
 
+        /* Pie de página: Métodos de Pago y Legal */
+        .store-footer {
+            margin-top: 32px;
+            padding: 24px 20px;
+        }
+        .footer-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 16px;
+        }
+        .payment-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+        }
+        .pay-badge {
+            height: 44px;
+            min-width: 96px;
+            padding: 0 16px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-weight: 800;
+            font-size: 0.98rem;
+            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            user-select: none;
+        }
+        .pay-zelle {
+            background: #6d1ed4;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+        }
+        .pay-bizum {
+            background: #ffffff;
+            color: #05c3dd;
+            letter-spacing: -0.3px;
+        }
+        .pay-cash {
+            background: #00d64f;
+            color: #ffffff;
+        }
+        .footer-divider {
+            border: 0;
+            border-top: 1px solid var(--shadow-dark);
+            margin: 22px 0 16px 0;
+        }
+        .footer-legal {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            text-align: center;
+        }
+        .footer-legal-links {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            font-size: 0.76rem;
+        }
+
         /* Checkout & Modals */
         .section-panel {
             padding: 22px;
@@ -458,6 +524,37 @@
                 <div id="lista-resenas"></div>
             </div>
         </div>
+
+        <!-- Pie de página: Métodos de Pago e Información Legal -->
+        <footer class="neu-box store-footer">
+            <div class="footer-title">Métodos de pago</div>
+            <div class="payment-badges">
+                <div class="pay-badge pay-zelle" title="Zelle">
+                    <span style="font-size:1.15rem;">Ƶ</span> Zelle
+                </div>
+                <div class="pay-badge pay-bizum" title="Bizum">
+                    <span style="font-size:1.05rem;">⇄</span> bizum
+                </div>
+                <div class="pay-badge pay-cash" title="Cash / Efectivo">
+                    <span style="font-size:1.15rem;">$</span> Cash
+                </div>
+            </div>
+
+            <hr class="footer-divider">
+
+            <div class="footer-legal">
+                <div id="footer-copy">© 2026 Tienda Online. Todos los derechos reservados. &nbsp;|&nbsp; Envío de alimentos y productos básicos para los tuyos: recibes el pedido y luego pagas.</div>
+                <div class="footer-legal-links">
+                    <span>Accesibilidad</span>
+                    <span>|</span>
+                    <span>Política de privacidad</span>
+                    <span>|</span>
+                    <span>Condiciones de uso</span>
+                    <span>|</span>
+                    <span>Pago contra entrega</span>
+                </div>
+            </div>
+        </footer>
 
         <!-- Barra Flotante del Carrito -->
         <div id="floating-cart" class="neu-box floating-total-bar hidden">
@@ -767,6 +864,10 @@
         document.getElementById("hero-nombre").textContent = cfg.nombre;
         document.getElementById("hero-desc").textContent = cfg.descripcion || "";
         document.getElementById("hero-ubicacion").textContent = cfg.ubicacion ? `📍 ${cfg.ubicacion}` : "";
+
+        const anioActual = new Date().getFullYear();
+        const nombreTienda = cfg.nombre || "Tienda Online";
+        document.getElementById("footer-copy").innerHTML = `© ${anioActual} ${nombreTienda}. Todos los derechos reservados. &nbsp;|&nbsp; Envío de alimentos y productos básicos para los tuyos: recibes el pedido y luego pagas.`;
 
         // Selector de Monedas
         const selMon = document.getElementById("select-moneda");
